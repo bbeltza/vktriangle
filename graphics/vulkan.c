@@ -6,10 +6,14 @@
 #include "vs.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 #if _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
+#elif _XLIB
+    #define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
 #include <vulkan/vulkan.h>
@@ -55,6 +59,32 @@ static VkBool32 VKAPI_CALL vk_dbgusercallback(
 {
     fprintf(stderr, "[Vulkan][%s]: %s\n", pCallbackData->pMessageIdName, pCallbackData->pMessage);
     return VK_FALSE;
+}
+
+static bool vk_checklayer(const char* layer)
+{
+    VkResult vr;
+    uint32_t propertycount;
+
+    vr = vkEnumerateInstanceLayerProperties(&propertycount, NULL);
+    if (!vr != VK_SUCCESS)
+        return false;
+
+    if (!propertycount)
+        return false;
+
+    ut_dynsalloc(VkLayerProperties, layers, propertycount);
+    vr = vkEnumerateInstanceLayerProperties(&propertycount, layers);
+    if (!vr != VK_SUCCESS)
+        return false;
+
+    for (uint32_t i = 0; i < propertycount; i++)
+    {
+        if (strcmp(layers[i].layerName, layer) == 0)
+            return true;
+    }
+
+    return false;
 }
 
 static void vk_releaseframebuffers(graphics_t* inst)
@@ -184,8 +214,11 @@ bool GPH_startup(graphics_t* inst, const graphicsplatform_t* platform)
 
             createinfo.pNext = &dbginfo;
             // Check if the layer is available
-            createinfo.ppEnabledLayerNames = LAYERS;
-            createinfo.enabledLayerCount = 1;
+            if (vk_checklayer(LAYERS[0]))
+            {
+                createinfo.ppEnabledLayerNames = LAYERS;
+                createinfo.enabledLayerCount = 1;
+            }
         #endif
         static const char* const EXTENSION_NAMES[] = {
             VK_KHR_SURFACE_EXTENSION_NAME,
@@ -194,6 +227,8 @@ bool GPH_startup(graphics_t* inst, const graphicsplatform_t* platform)
             #endif
             #if _WIN32
                 VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+            #elif _XLIB
+                VK_KHR_XLIB_SURFACE_EXTENSION_NAME
             #endif
         };
 
@@ -210,6 +245,12 @@ bool GPH_startup(graphics_t* inst, const graphicsplatform_t* platform)
         .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
         .hwnd = platform->hWnd,
         .hinstance = platform->hInstance
+    }, NULL, &inst->vksurface);
+#elif _XLIB
+    vr = vkCreateXlibSurfaceKHR(inst->vkinstance, &(VkXlibSurfaceCreateInfoKHR){
+        .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+        .dpy = platform->display,
+        .window = (Window)platform->window
     }, NULL, &inst->vksurface);
 #endif
     if (vr != VK_SUCCESS)

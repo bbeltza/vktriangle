@@ -19,6 +19,12 @@ typedef struct _graphicsplatform_t graphicsplatform_t;
         void* hWnd;
         void* hInstance;
     };
+#elif _XLIB
+    struct _graphicsplatform_t
+    {
+        void* display;
+        unsigned long window;
+    };
 #endif
 
 extern void GPH_render(graphics_t* inst);

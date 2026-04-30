@@ -1,3 +1,5 @@
+// This is a slightly modified version of one of my utility headers from my game engine that I stole hahahah (utils/mem.h)
+
 #ifndef UT_MEM_H
 #define UT_MEM_H
 
