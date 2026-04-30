@@ -1,0 +1,10 @@
+find_package(Vulkan)
+project(vkhellographics)
+add_library(vkhellographics INTERFACE)
+
+if (Vulkan_FOUND)
+    target_sources(vkhellographics INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/vulkan.c")
+    target_link_libraries(vkhellographics INTERFACE Vulkan::Vulkan)
+else()
+    message(FATAL_ERROR "Vulkan not found! No other graphics API is supported (at least right now)")
+endif()
