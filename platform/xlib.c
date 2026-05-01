@@ -28,27 +28,10 @@ bool PLT_startup(platform_t* plt, struct _graphicsplatform_t* gph_plt)
 
     Window root_wnd = XDefaultRootWindow(plt->display);
 
-    Visual* def_visual = XDefaultVisual(plt->display, DefaultScreen(plt->display));
-    XSetWindowAttributes wnd_attribs = {
-        .background_pixmap = None,
-        .background_pixel = 0xFFFFFFFF,
-        .border_pixmap = CopyFromParent,
-        .border_pixel = 0L,
-        .bit_gravity = ForgetGravity,
-        .win_gravity = CenterGravity,
-        .backing_store = NotUseful,
-        .backing_planes = (unsigned long)(-1),
-        .backing_pixel = 0L,
-        .save_under = True,
-        .event_mask = NoEventMask,
-        .do_not_propagate_mask = 0,
-        .override_redirect = False,
-        .colormap = CopyFromParent,
-        .cursor = None
-    };
-    plt->window = XCreateWindow(plt->display, root_wnd, 0, 0, plt->cache.w, plt->cache.h, 0, 0, InputOutput, def_visual, 0, &wnd_attribs);
+    plt->window = XCreateSimpleWindow(plt->display, root_wnd, 0, 0, plt->cache.w, plt->cache.h, 0, 0, 0xFFFFFFFF);
     if (!plt->window)
         return false;
+
     
     Atom WMdestroy_atom = XInternAtom(plt->display, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(plt->display, plt->window, &WMdestroy_atom, 1);

@@ -5,13 +5,17 @@ It is made fully in C (specifically compatible with C99+?), although I had plann
 
 It only supports Windows, since windowing is made using the win32 api, although portability has been made pretty easy (you just have to implement 3 PLT_ functions) so I'm thinking on porting to X11 systems after too (using Xlib or XCB)
 
+###### It supports X11 systems now under Xlib! So you can use this application on Linux! (For most systems which support X11)
+
 ## Requirements
 
 All you need are 3 things! Nothing else:
     
 - A C compiler, it can be anything. But MSVC's clang was used to compile this
-- The Windows SDK
 - The Vulkan SDK
+- Platform dependencies:
+    - The Windows SDK (for Windows)
+    - Or X11's development libraries (`libx11-dev` on most package managers)
 
 ---
 

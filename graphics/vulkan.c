@@ -18,9 +18,14 @@
 
 #include <vulkan/vulkan.h>
 
-#define VKFRAMEBUFFER_COUNT 2
-#define VKFRAMEBUFFER_FORMAT VK_FORMAT_R8G8B8A8_SRGB
+#define USE_SRGB 1
 
+#define VKFRAMEBUFFER_COUNT 2
+#if USE_SRGB
+    #define VKFRAMEBUFFER_FORMAT VK_FORMAT_B8G8R8A8_SRGB
+#else
+    #define VKFRAMEBUFFER_FORMAT VK_FORMAT_B8G8R8A8_UNORM
+#endif
 struct _graphics_t
 {
     VkInstance vkinstance;
@@ -67,7 +72,7 @@ static bool vk_checklayer(const char* layer)
     uint32_t propertycount;
 
     vr = vkEnumerateInstanceLayerProperties(&propertycount, NULL);
-    if (!vr != VK_SUCCESS)
+    if (vr != VK_SUCCESS)
         return false;
 
     if (!propertycount)
@@ -75,7 +80,7 @@ static bool vk_checklayer(const char* layer)
 
     ut_dynsalloc(VkLayerProperties, layers, propertycount);
     vr = vkEnumerateInstanceLayerProperties(&propertycount, layers);
-    if (!vr != VK_SUCCESS)
+    if (vr != VK_SUCCESS)
         return false;
 
     for (uint32_t i = 0; i < propertycount; i++)
@@ -507,7 +512,7 @@ void GPH_render(graphics_t* inst)
 
     uint32_t img_index;
     vr = vkAcquireNextImageKHR(inst->vkdevice, inst->vkswapchain, __UINT64_MAX__, inst->vksemaphores[1], VK_NULL_HANDLE, &img_index);
-    
+
     vr = vkResetCommandBuffer(inst->vkcmdbuffers[0], 0);
     vr = vkResetCommandPool(inst->vkdevice, inst->vkcmdpool, 0);
 
@@ -573,6 +578,6 @@ void GPH_size(graphics_t* inst, int w, int h)
     inst->vkscreenextent = (VkExtent2D){ .width = w, .height = h };
     // Aspect ratio constant for the shader, it's not used right now but it makes the triangle look equilateral
     inst->vkpushconstantaspect = (float)w / h;
-
+    
     inst->wantresize = true;
 }
