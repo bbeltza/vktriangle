@@ -1,7 +1,7 @@
 # A Vulkan Triangle
 Hey!! This is a very, but very simple vulkan triangle that I made in the last 2 days. The triangle revolves and rotates around the Y axis.
 
-It is made fully in C (specifically compatible with C99+?), although I had planned to use C++ but it had no benifit, at least for me... (also having designated initializers when I don't use C++26 was an actual benifit from C)
+It is made fully in C (specifically compatible with C99+?), although I had planned to use C++ but it had no benifit, at least for me... (also having designated initializers when I don't use C++20 was an actual benifit from C)
 
 It only supports Windows, since windowing is made using the win32 api, although portability has been made pretty easy (you just have to implement 2 PLT_ functions) so I'm thinking on porting to X11 systems after too (using Xlib or XCB)
 
