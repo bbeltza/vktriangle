@@ -77,6 +77,8 @@ int PLT_run(platform_t* plt, struct _graphics_t* gph)
     }
 
     END:
+    GPH_close(gph);
+
     XCloseDisplay(plt->display);
     return 0;
 }

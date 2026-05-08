@@ -479,6 +479,8 @@ bool GPH_startup(graphics_t* inst, const graphicsplatform_t* platform)
 
 void GPH_close(graphics_t* inst)
 {
+    vkDeviceWaitIdle(inst->vkdevice);
+
     vk_releaseframebuffers(inst);
 
     for (int i = 0; i < ut_arrcount(inst->vksemaphores); i++)
