@@ -33,7 +33,9 @@ struct _graphics_t
     VkCommandPool vkcmdpool;
     VkQueue vkqueue;
 
-    VkSemaphore vksemaphores[2];
+    VkFence vkfence;
+    VkSemaphore vkimagesemaphore;
+    VkSemaphore vkrendersemaphores[VKFRAMEBUFFER_COUNT];
     VkCommandBuffer vkcmdbuffers[1];
 
     VkShaderModule vkvertshader;
@@ -112,6 +114,9 @@ static void vk_releaseframebuffers(graphics_t* inst)
 
 static bool vk_createswapchain(graphics_t* inst)
 {
+    (void)vk_dbgusercallback;
+    (void)vk_checklayer;
+
     VkResult vr;
     (void)vr;
 
@@ -465,8 +470,19 @@ bool GPH_startup(graphics_t* inst, const graphicsplatform_t* platform)
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             .flags = 0
         };
-        vr = vkCreateSemaphore(inst->vkdevice, &createinfo, NULL, &inst->vksemaphores[0]);
-        vr = vkCreateSemaphore(inst->vkdevice, &createinfo, NULL, &inst->vksemaphores[1]);
+        vr = vkCreateSemaphore(inst->vkdevice, &createinfo, NULL, &inst->vkimagesemaphore);
+        for (int i = 0; i < VKFRAMEBUFFER_COUNT; i++)
+            vr = vkCreateSemaphore(inst->vkdevice, &createinfo, NULL, &inst->vkrendersemaphores[i]);
+        if (vr != VK_SUCCESS)
+            return false;
+    }
+
+    {
+        VkFenceCreateInfo createinfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = 0
+        };
+        vr = vkCreateFence(inst->vkdevice, &createinfo, NULL, &inst->vkfence);
         if (vr != VK_SUCCESS)
             return false;
     }
@@ -483,8 +499,11 @@ void GPH_close(graphics_t* inst)
 
     vk_releaseframebuffers(inst);
 
-    for (int i = 0; i < ut_arrcount(inst->vksemaphores); i++)
-        vkDestroySemaphore(inst->vkdevice, inst->vksemaphores[i], NULL);
+    for (int i = 0; i < ut_arrcount(inst->vkrendersemaphores); i++)
+        vkDestroySemaphore(inst->vkdevice, inst->vkrendersemaphores[i], NULL);
+
+    vkDestroySemaphore(inst->vkdevice, inst->vkimagesemaphore, NULL);
+    vkDestroyFence(inst->vkdevice, inst->vkfence, NULL);
 
     vkDestroyShaderModule(inst->vkdevice, inst->vkvertshader, NULL);
     vkDestroyShaderModule(inst->vkdevice, inst->vkfragshader, NULL);
@@ -503,17 +522,19 @@ void GPH_render(graphics_t* inst)
     VkResult vr;
     (void)vr;
 
-    vr = vkQueueWaitIdle(inst->vkqueue);
-
     if (inst->wantresize)
     {
+        vkDeviceWaitIdle(inst->vkdevice);
         vk_releaseframebuffers(inst);
         if (!vk_createswapchain(inst))
             abort();
     }
 
+    vr = vkWaitForFences(inst->vkdevice, 1, &inst->vkfence, VK_TRUE, UINT64_MAX);
+    vr = vkResetFences(inst->vkdevice, 1, &inst->vkfence);
+
     uint32_t img_index;
-    vr = vkAcquireNextImageKHR(inst->vkdevice, inst->vkswapchain, __UINT64_MAX__, inst->vksemaphores[1], VK_NULL_HANDLE, &img_index);
+    vr = vkAcquireNextImageKHR(inst->vkdevice, inst->vkswapchain, UINT64_MAX, inst->vkimagesemaphore, VK_NULL_HANDLE, &img_index);
 
     vr = vkResetCommandBuffer(inst->vkcmdbuffers[0], 0);
     vr = vkResetCommandPool(inst->vkdevice, inst->vkcmdpool, 0);
@@ -558,17 +579,17 @@ void GPH_render(graphics_t* inst)
         .commandBufferCount = ut_arrcount(inst->vkcmdbuffers),
         .waitSemaphoreCount = 1,
         .signalSemaphoreCount = 1,
-        .pWaitSemaphores = &inst->vksemaphores[1],
-        .pSignalSemaphores = &inst->vksemaphores[0],
+        .pWaitSemaphores = &inst->vkimagesemaphore,
+        .pSignalSemaphores = &inst->vkrendersemaphores[img_index],
         .pWaitDstStageMask = &(VkPipelineStageFlags){VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT}
-    }, NULL);
+    }, inst->vkfence);
 
     vr = vkQueuePresentKHR(inst->vkqueue, &(VkPresentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .swapchainCount = 1,
         .waitSemaphoreCount = 1,
         .pSwapchains = &inst->vkswapchain,
-        .pWaitSemaphores = &inst->vksemaphores[0],
+        .pWaitSemaphores = &inst->vkrendersemaphores[img_index],
         .pImageIndices = &img_index
     });
 
